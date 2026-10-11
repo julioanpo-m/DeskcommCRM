@@ -179,5 +179,15 @@ Una tarea está terminada cuando:
 - Meta Business Suite: `business.facebook.com`
 - Hostinger hPanel: `hpanel.hostinger.com`
 
+## Documentos de referencia (en docs/)
 
+Antes de generar cualquier plan, ECC DEBE leer estos archivos en orden:
 
+1. `docs/index.md` - Indice completo
+2. `docs/00-negocio/pipeline.md` - Estructura del pipeline
+3. `docs/01-contenido/blueprint-maestro-v11.md` - Sistema de contenido
+4. `docs/02-anuncios/blueprint-pag-v1.md` - Sistema de anuncios
+5. `docs/03-crm/arquitectura-lead-management.md` - Flujo del CRM
+6. `docs/04-tecnico/estructura-proyecto.md` - Arquitectura tecnica
+
+Estos documentos son la fuente de verdad. Si algo no esta en ellos, no existe.
