@@ -29,7 +29,7 @@ caso de uso del consultorio. DeskcommCRM ya trae integrados Next.js 16 + Supabas
 | **IA de desarrollo** | DeepSeek v4 Pro (vía cc-use, ECC) | Programación y documentación |
 | **Correos** | Resend | Correo transaccional (alertas, respaldo) |
 | **Calendario** | Google Calendar API | Agenda de citas |
-| **Automatización externa** | n8n (self-hosted, planeado) | Orquestación de captación Meta (plan de captación) |
+| **Automatización externa** | n8n (self-hosted, instalado) | Orquestación de captación Meta; vive en `/root/n8n/` (Compose aparte, red interna del CRM) |
 | **Deploy** | VPS Hostinger KVM 1 (Ubuntu 24.04+) + Docker Compose | Producción |
 | **Dominio** | crm.drjulioporrasalergia.tech | Acceso al CRM |
 
@@ -42,26 +42,28 @@ caso de uso del consultorio. DeskcommCRM ya trae integrados Next.js 16 + Supabas
 │              VPS HOSTINGER KVM 1 (4 GB RAM)               │
 │                 Ubuntu 24.04+ · Docker Compose            │
 │                                                           │
-│   ┌──────────┐   ┌──────┐   ┌──────────┐   ┌──────────┐  │
-│   │   app    │   │  db  │   │  redis   │   │ scheduler│  │
-│   │ Deskcomm │   │Postgres│  │  cache/ │   │ workers/ │  │
-│   │ Next.js  │   │(Supabase)│ │ colas   │   │ cron    │  │
-│   └────┬─────┘   └──────┘   └──────────┘   └────┬─────┘  │
-│        │                                        │        │
-│   ┌────┴─────┐                                  │        │
-│   │   waha   │── WhatsApp (QR sesión)           │        │
-│   └────┬─────┘                                  │        │
-│        │                                        │        │
-│        └──────────────┬─────────────────────────┘        │
-│                       │                                    │
-│   Nginx + Let's Encrypt (SSL, renovación automática)      │
-│                       │                                    │
-└───────────────────────┼────────────────────────────────────┘
-                        ▼
-              crm.drjulioporrasalergia.tech
+│  red interna deskcommcrm_internal                         │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  │
+│  │  app   │ │ worker │ │  waha  │ │scheduler│ │ redis  │  │
+│  │Next.js │ │ colas  │ │WhatsApp│ │  cron  │ │ cache  │  │
+│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘  │
+│      │          │          │          │          │        │
+│      └──────────┴──────────┴──────────┴──────────┘        │
+│                          │                                │
+│  ┌────────┐        ┌─────┴─────┐                          │
+│  │  srh   │        │    n8n    │  ← /root/n8n/ (Compose   │
+│  │        │        │ captación │    aparte, misma red)    │
+│  └───┬────┘        └─────┬─────┘                          │
+│      └──────────┬────────┘                                │
+│                 ▼                                         │
+│  Caddy (80/443) · Let's Encrypt (renovación automática)   │
+└─────────────────────┬─────────────────────────────────────┘
+                      ▼
+      crm.drjulioporrasalergia.tech
+      n8n.drjulioporrasalergia.tech
 ```
 
-Servicios definidos en `docker-compose.prod.yml`: `app`, `db`, `redis`, `scheduler`, `waha`.
+Servicios definidos en `docker-compose.prod.yml`: `app`, `worker`, `waha`, `redis`, `srh`, `scheduler`, `caddy` (proxy). La base de datos es Supabase en la nube — **no corre Postgres en la VPS**.
 
 ---
 
@@ -97,6 +99,11 @@ Servicios definidos en `docker-compose.prod.yml`: `app`, `db`, `redis`, `schedul
 
 - **Backups:** diario de Postgres (retención 7 días) + backups manuales
   (`bash hostgator-setup-kit/backup.sh`). **Nunca tocar producción sin backup previo verificado.**
+- **n8n:** proyecto Compose aparte en `/root/n8n/` de la VPS (fuera del repo —
+  update.sh no lo toca). Puerta con basic auth en Caddy (n8n 2.x eliminó el
+  suyo), backup diario 03:30, operación en su `LEEME.md`. Ritual de
+  actualización del CRM: `git checkout -- Caddyfile` antes y
+  `bash /root/n8n/caddy-reaplicar.sh` después.
 - **Actualización:** `bash hostgator-setup-kit/update.sh`
 - **Reconfiguración:** `bash hostgator-setup-kit/install.sh`
 - **Logs:** `docker compose -f docker-compose.prod.yml logs -f app`
